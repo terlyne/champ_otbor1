@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from database.db import read_all_products, create_order_product, create_order, update_order_product
+from database.db import read_all_products, create_order
 from views.product_groupbox import ProductGroupBox
 from views.login_dialog import LoginDialog
 from views.order_widget import OrderWidget
@@ -22,7 +22,11 @@ class MainWindow(QMainWindow):
         # Заказ
         self.order = None
 
+        # Пользователь
         self.user = None
+
+        # Пункт выдачи
+        self.pickup_point = None
 
         # Окно редактирования заказа
         self.order_widget = None
@@ -31,8 +35,8 @@ class MainWindow(QMainWindow):
         self.edit_order_button = None
 
 
-        # Список товаров в заказе
-        self.order_products = []
+        # Словарь продуктов и их кол-ва в заказе
+        self.order_products = {}
 
         self.login_button = QPushButton("Войти")
         self.login_button.clicked.connect(self.show_login_dialog)
@@ -57,6 +61,10 @@ class MainWindow(QMainWindow):
 
         self.main_layout.addWidget(self.products_scroll)
 
+
+        self.do_order_button = QPushButton("Сделать заказ")
+        self.do_order_button.clicked.connect(self.do_order)
+
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
@@ -73,15 +81,20 @@ class MainWindow(QMainWindow):
             for product in self.products:
                 product_groupbox = ProductGroupBox(self, product, spin_boxes=True)
                 self.products_layout.addWidget(product_groupbox)
+                if product in self.order_products:
+                    product_groupbox.spin_box.setValue(self.order_products[product])
         else:
             for product in self.products:
                 product_groupbox = ProductGroupBox(self, product)
                 self.products_layout.addWidget(product_groupbox)
 
+
+
         self.products_widget.setLayout(self.products_layout)
         self.products_scroll.setWidget(self.products_widget)
 
         self.products_scroll.setWidgetResizable(True)
+
 
 
     def show_login_dialog(self):
@@ -91,7 +104,6 @@ class MainWindow(QMainWindow):
     def show_all_after_login(self):
         self.user = self.login_dialog.user
         # Создаем наш заказ после получения пользователя
-        self.order = create_order(self.user.id)
 
         self.welcome_label.setText(f"Привет, {self.user.username}!")
         self.show_products(spin_boxes=True)
@@ -101,24 +113,24 @@ class MainWindow(QMainWindow):
         self.edit_order_button.clicked.connect(self.show_order_widget)
         self.upper_layout.addWidget(self.edit_order_button)
 
+        self.main_layout.addWidget(self.do_order_button)
+
     def show_order_widget(self):
+        # Обновляем order_products перед открытием OrderWidget
+        self.order_products.clear()  # Очищаем предыдущие данные
         for i in range(self.products_layout.count()):
             product_groupbox = self.products_layout.itemAt(i).widget()
-            quantity = product_groupbox.spin_box.value()
+            if product_groupbox.spin_box.value() > 0:
+                product = product_groupbox.product
+                self.order_products[product] = product_groupbox.spin_box.value()
 
-            # Проверяем, что количество больше 0
-            if quantity > 0:
-                # Проверяем, существует ли уже OrderProduct с таким product_id и order_id
-                exists = any(
-                    order_product.product_id == product_groupbox.product.id and order_product.order_id == self.order.id
-                    for order_product in self.order_products
-                )
-
-                if not exists:  # Если OrderProduct не существует, создаем новый
-                    print(self.order)
-                    order_product = create_order_product(self.order.id, product_groupbox.product.id, quantity)
-                    self.order_products.append(order_product)
-
-
-        self.order_widget = OrderWidget()
+        self.order_widget = OrderWidget(self.order_products, self)
+        self.order_widget.closed.connect(self.on_order_updated)
+        self.pickup_point = self.order_widget.pickup_point
         self.order_widget.show()
+
+    def on_order_updated(self):
+        self.show_products(spin_boxes=True)
+
+    def do_order(self):
+        create_order(self.order_products, self.user.id, self.pickup_point)

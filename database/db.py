@@ -25,49 +25,36 @@ def read_user(username, password):
         return user
 
 
-def create_order(user_id):
+def create_order(order_products, user_id, pickup_point_id):
     with Session() as session:
+        total_discount = None
+        if any(order_product.discount for order_product in order_products):
+            total_discount = sum(order_product.discount * order_product.quantity for order_product in order_products)
         order = Order(
-            total_price = 0,
-            total_discount = None,
-            pickup_point_id = 1,
-            user_id = user_id,
+            total_price=sum(order_product.price * order_product.quantity for order_product in order_products),
+            total_discount=total_discount,
+            user_id=user_id,
+            pickup_point_id=pickup_point_id,
         )
+
+        for order_product in order_products:
+            # Создаем объект OrderProduct и связываем его с заказом
+            order_product_entry = OrderProduct(
+                order=order,  # Связываем с текущим заказом
+                product_id=order_product.id,  # Используем id продукта
+                quantity=order_product.quantity  # Количество
+            )
+            session.add(order_product_entry)  # Добавляем OrderProduct в сессию
+
         session.add(order)
 
         session.commit()
 
         return order
 
-def create_order_product(order_id, product_id, quantity):
-    with Session() as session:
-        order_product = OrderProduct(
-            order_id=order_id,
-            product_id=product_id,
-            quantity=quantity,
-        )
 
-        session.add(order_product)
-        session.commit()
 
-        return order_product
 
-def update_order_product(order_product, order_id, pickup_point_id, quantity):
-    with Session() as session:
-        order_product.order_id = order_id
-        order_product.pickup_point_id = pickup_point_id
-        order_product.quantity = quantity
-
-        session.commit()
-
-        return order_product
-
-def read_all_order_products():
-    with Session() as session:
-        stmt = select(OrderProduct).options(joinedload(OrderProduct.product))
-        products = session.execute(stmt).scalars().all()
-
-        return products
 
 
 

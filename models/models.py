@@ -52,7 +52,7 @@ class Order(Base):
 
 
     user: Mapped["User"] = relationship("User", back_populates="orders")
-    order_products: Mapped["OrderProduct"] = relationship("OrderProduct", back_populates="order")
+    order_products: Mapped[list["OrderProduct"]] = relationship("OrderProduct", back_populates="order")
     pickup_point: Mapped["PickupPoint"] = relationship("PickupPoint", back_populates="orders")
     receipt: Mapped["Receipt"] = relationship("Receipt", back_populates="order")
 

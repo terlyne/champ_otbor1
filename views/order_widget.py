@@ -1,3 +1,4 @@
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -6,14 +7,17 @@ from PyQt6.QtWidgets import (
 )
 
 from views.product_groupbox import ProductGroupBox
-from database.db import read_all_pickup_points, read_all_order_products
-
+from database.db import read_all_pickup_points
 
 class OrderWidget(QWidget):
-    def __init__(self):
+
+    closed = pyqtSignal()
+
+    def __init__(self, order_products, parent):
         super().__init__()
 
-        self.order_products = read_all_order_products()
+        self.order_products = order_products
+        self.parent = parent
 
         self.setMinimumSize(600, 400)
 
@@ -32,9 +36,10 @@ class OrderWidget(QWidget):
         self.products_scroll = QScrollArea()
 
 
-        for order_product in self.order_products:
-            product_groupbox = ProductGroupBox(self, order_product.product, spin_boxes=True)
-            product_groupbox.spin_box.setValue(order_product.quantity)
+        for product, quantity in self.order_products.items():
+
+            product_groupbox = ProductGroupBox(self, product, spin_boxes=True)
+            product_groupbox.spin_box.setValue(quantity)
             self.products_layout.addWidget(product_groupbox)
 
         self.products_widget.setLayout(self.products_layout)
@@ -60,5 +65,14 @@ class OrderWidget(QWidget):
         self.setLayout(self.main_layout)
 
     def accept(self):
-        self.pickup_point = self.pickup_points_combobox.currentText()
+        # Обновляем количество продуктов в родительском объекте
+        for i in range(self.products_layout.count()):
+            product_groupbox = self.products_layout.itemAt(i).widget()
+            product = product_groupbox.product
+            quantity = product_groupbox.spin_box.value()
+
+            # Обновляем количество в родительском словаре
+            self.parent.order_products[product] = quantity
+
+        self.closed.emit()
         self.close()
