@@ -24,31 +24,44 @@ def read_user(username, password):
 
         return user
 
+def read_pickup_point_by_address(pickup_point_address):
+    with Session() as session:
+        stmt = select(PickupPoint).where(PickupPoint.address == pickup_point_address)
+        pickup_point = session.execute(stmt).scalar_one_or_none()
+
+        return pickup_point
+
 
 def create_order(order_products, user_id, pickup_point_id):
     with Session() as session:
         total_discount = None
-        if any(order_product.discount for order_product in order_products):
-            total_discount = sum(order_product.discount * order_product.quantity for order_product in order_products)
+
+        # Вычисляем общую цену и общую скидку
+        total_price = 0
+        for product, quantity in order_products.items():
+            total_price += product.price * quantity
+            if product.discount:
+                total_discount = (total_discount or 0) + (product.discount * quantity)
+
+        # Создаем заказ
         order = Order(
-            total_price=sum(order_product.price * order_product.quantity for order_product in order_products),
+            total_price=total_price,
             total_discount=total_discount,
             user_id=user_id,
             pickup_point_id=pickup_point_id,
         )
 
-        for order_product in order_products:
-            # Создаем объект OrderProduct и связываем его с заказом
+        # Создаем записи для каждого продукта в заказе
+        for product, quantity in order_products.items():
             order_product_entry = OrderProduct(
                 order=order,  # Связываем с текущим заказом
-                product_id=order_product.id,  # Используем id продукта
-                quantity=order_product.quantity  # Количество
+                product_id=product.id,  # Используем id продукта
+                quantity=quantity  # Количество
             )
             session.add(order_product_entry)  # Добавляем OrderProduct в сессию
 
-        session.add(order)
-
-        session.commit()
+        session.add(order)  # Добавляем сам заказ в сессию
+        session.commit()  # Сохраняем изменения в базе данных
 
         return order
 

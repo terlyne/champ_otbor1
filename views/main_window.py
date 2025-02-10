@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from database.db import read_all_products, create_order
+from database.db import read_all_products, create_order, read_pickup_point_by_address
 from views.product_groupbox import ProductGroupBox
 from views.login_dialog import LoginDialog
 from views.order_widget import OrderWidget
@@ -126,11 +126,15 @@ class MainWindow(QMainWindow):
 
         self.order_widget = OrderWidget(self.order_products, self)
         self.order_widget.closed.connect(self.on_order_updated)
-        self.pickup_point = self.order_widget.pickup_point
         self.order_widget.show()
 
     def on_order_updated(self):
+        self.pickup_point = read_pickup_point_by_address(self.order_widget.pickup_point)
+        print(self.pickup_point)
+
         self.show_products(spin_boxes=True)
 
     def do_order(self):
-        create_order(self.order_products, self.user.id, self.pickup_point)
+        print("Товары в заказе:", self.order_products)
+        print("Пункт выдачи:", self.pickup_point)
+        create_order(self.order_products, self.user.id, self.pickup_point.id)

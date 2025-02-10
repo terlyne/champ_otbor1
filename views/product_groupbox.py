@@ -30,7 +30,7 @@ class ProductGroupBox(QGroupBox):
         image_stream = io.BytesIO(image_data)  # Преобразуем BLOB в поток
         pixmap = QPixmap()
         pixmap.loadFromData(image_stream.read())  # Загружаем изображение из потока
-        scaled_pixmap = pixmap.scaled(200, 200, aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio, transformMode=Qt.TransformationMode.SmoothTransformation) # Это необязательно (Чисто для размера изображения)
+        scaled_pixmap = pixmap.scaled(200, 200, aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio) # Это необязательно (Чисто для размера изображения)
         self.photo_label = QLabel()
         self.photo_label.setPixmap(scaled_pixmap)
 

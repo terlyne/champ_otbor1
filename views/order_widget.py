@@ -74,5 +74,7 @@ class OrderWidget(QWidget):
             # Обновляем количество в родительском словаре
             self.parent.order_products[product] = quantity
 
+        self.pickup_point = self.pickup_points_combobox.currentText()
+
         self.closed.emit()
         self.close()
